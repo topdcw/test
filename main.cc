@@ -68,6 +68,7 @@ void cancelHuixian(int fd){
 	options.c_lflag &= ~(ICANON |ECHO | ECHOE | ISIG);  /*取消回显*/
 	//读取85个字节或者超过100ms后进行返回
 	options.c_cc[VTIME] = 1; //更新间隔,单位百毫秒
+	options.c_cc[VMIN] = 28; //read当读取28个字节才返回
 	tcflush(fd, TCIFLUSH);
 	if (tcsetattr(fd, TCSANOW, &options) != 0){
 		perror("huixian error");
