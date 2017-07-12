@@ -68,7 +68,6 @@ void cancelHuixian(int fd){
 	options.c_lflag &= ~(ICANON |ECHO | ECHOE | ISIG);  /*取消回显*/
 	//读取85个字节或者超过100ms后进行返回
 	options.c_cc[VTIME] = 1; //更新间隔,单位百毫秒
-	options.c_cc[VMIN] = 85; //read当读取85个字节才返回
 	tcflush(fd, TCIFLUSH);
 	if (tcsetattr(fd, TCSANOW, &options) != 0){
 		perror("huixian error");
@@ -84,13 +83,15 @@ void cancelHuixian(int fd){
 
 int main()
 {
-
+	
+	
+	std::cout << "Hello world!" << std::endl;
 	printf ("\n这是一个串口读写程序！\n");
 	//a,串口相关配置及初始化
 	int fd;
 	int nread;
 	char sendbuff[BUF_SIZE];//供scoket接收数据和向串口写数据使用
-	char recvbuff[BUF_SIZE];//供串口接收数据和socket发送数据使用	
+	char recvbuff[BUF_SIZE];//供串口接收数据和向socket发送数据使用	
 	char *dev="/dev/ttyUSB0";
 	fd=OpenDev (dev);
 	if(fd==-1){
@@ -111,14 +112,14 @@ int main()
 	memset(&local_addr, 0, sizeof(local_addr));  //每个字节都用0填充
 	local_addr.sin_family = AF_INET;  //使用IPv4地址
 	local_addr.sin_addr.s_addr = inet_addr("192.168.199.117");  //具体的IP地址
-	local_addr.sin_port = htons(1234);  //端口
+	local_addr.sin_port = htons(1235);  //本地的接收端口
 
 		//创建sockaddr_in结构体变量,表示服务器地址信息
 	struct sockaddr_in serv_addr;
 	memset(&serv_addr, 0, sizeof(serv_addr));  //每个字节都用0填充
 	serv_addr.sin_family = AF_INET;  //使用IPv4地址
 	serv_addr.sin_addr.s_addr = inet_addr("192.168.199.212");  //具体的IP地址
-	serv_addr.sin_port = htons(1234);  //端口
+	serv_addr.sin_port = htons(1234);  //主控软件的接收端口
 
 		//将套接字和IP、端口绑定
 	if(bind(sock, (struct sockaddr*)&local_addr, sizeof(local_addr))==-1){
@@ -146,7 +147,7 @@ int main()
 			if(FD_ISSET(sock,&rfds)){//测试sock是否可读
 				strLen= recvfrom(sock, sendbuff, BUF_SIZE, 0,(struct sockaddr*)&clnt_addr, &nSize);
 				sendbuff[strLen]=0;
-				printf("\nMessage form server: %s\n", sendbuff);
+				printf("\nMessage form server: %c\n", sendbuff[0]);
 				if(FD_ISSET(fd,&wfds)){//测试fd是否可写
 					printf("send message to port!\n");
 					sendInfo(fd,sendbuff,strLen);
@@ -156,9 +157,10 @@ int main()
 			if(FD_ISSET(fd,&rfds)){//测试fd是否可读
 				nread=read(fd,recvbuff,256);
 				recvbuff[nread]='\0';
-				printf("\nMessage form port:%s\n",recvbuff);
+				printf("\nMessage form port:%c\n",recvbuff[0]);
 				if(FD_ISSET(sock,&wfds)){//测试sock是否可写
 					printf("send message to server!\n");
+					recvbuff[1]='1';//自动加上Pi的编号。
 					printf("%d\n",nread);
 					sendto(sock, recvbuff, nread, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 				}
@@ -166,8 +168,6 @@ int main()
 		}
 	}
 
-	
-	std::cout << "Hello world!" << std::endl;
 	return 0;
 }
 
