@@ -18,8 +18,9 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/time.h>
 
-#define BUF_SIZE 256
+#define BUF_SIZE 35
 //1，打开串口函数
 int OpenDev(char*Dev){
 	int fd=open(Dev,O_RDWR | O_NOCTTY);
@@ -66,9 +67,10 @@ void cancelHuixian(int fd){
 		return;
 	}
 	options.c_lflag &= ~(ICANON |ECHO | ECHOE | ISIG);  /*取消回显*/
+	options.c_iflag &= ~(ICRNL | IXON);
 	//读取85个字节或者超过100ms后进行返回
-	options.c_cc[VTIME] = 1; //更新间隔,单位百毫秒
-	options.c_cc[VMIN] = 28; //read当读取28个字节才返回
+	options.c_cc[VTIME] = 0; //更新间隔,单位百毫秒
+	options.c_cc[VMIN] = 33; //read当读取28个字节才返回
 	tcflush(fd, TCIFLUSH);
 	if (tcsetattr(fd, TCSANOW, &options) != 0){
 		perror("huixian error");
@@ -119,7 +121,8 @@ int main()
 	struct sockaddr_in serv_addr;
 	memset(&serv_addr, 0, sizeof(serv_addr));  //每个字节都用0填充
 	serv_addr.sin_family = AF_INET;  //使用IPv4地址
-	serv_addr.sin_addr.s_addr = inet_addr("192.168.199.212");  //具体的IP地址
+//	serv_addr.sin_addr.s_addr = inet_addr("192.168.199.212");  //具体的IP地址
+	serv_addr.sin_addr.s_addr = inet_addr("192.168.199.132");  //具体的IP
 	serv_addr.sin_port = htons(1234);  //主控软件的接收端口
 
 		//将套接字和IP、端口绑定
@@ -134,39 +137,51 @@ int main()
 	//c,select函数的使用
 	fd_set rfds;
 	fd_set wfds;
-    struct timeval timeout={3,0}; //select等待3秒，3秒轮询，要非阻塞就置0
+       // struct timeval timeout={3,0}; //select等待3秒，3秒轮询，要非阻塞就置0
 	int maxfdp=sock>fd?sock+1:fd+1;//最大描述符+1
 	while(1){
+		struct timeval timeout={1,0}; //select等待1秒，1秒轮询，要非阻塞就置0
 		FD_ZERO(&rfds); //每次循环都要清空集合，否则不能检测描述符变化
 		FD_ZERO(&wfds);
-        FD_SET(sock,&rfds); //添加描述符  
-        FD_SET(fd,&rfds); //同上 
-		FD_SET(sock,&wfds); 
-        FD_SET(fd,&wfds); 
+                FD_SET(sock,&rfds); //添加描述符  
+                FD_SET(fd,&rfds); //同上 
+		//FD_SET(sock,&wfds); 
+                //FD_SET(fd,&wfds); 
+                //struct timeval tv;
+                //gettimeofday(&tv,NULL);
+                //printf("\n\nmillisecond:%ld\n\n",tv.tv_sec*1000 + tv.tv_usec/1000);  //毫秒
 		if(select(maxfdp,&rfds,&wfds,NULL,&timeout)>0){
 			//从udp读入并发送给串口
 			if(FD_ISSET(sock,&rfds)){//测试sock是否可读
-				strLen= recvfrom(sock, sendbuff, BUF_SIZE, 0,(struct sockaddr*)&clnt_addr, &nSize);
+				struct timeval tv;
+             			gettimeofday(&tv,NULL);
+              			printf("millisecond:%ld",tv.tv_sec*1000 + tv.tv_usec/1000);  //毫秒		
+    				strLen= recvfrom(sock, sendbuff, BUF_SIZE, 0,(struct sockaddr*)&clnt_addr, &nSize);
 				sendbuff[strLen]=0;
 				printf("\nMessage form server: %c\n", sendbuff[0]);
-				if(FD_ISSET(fd,&wfds)){//测试fd是否可写
+				//if(FD_ISSET(fd,&wfds)){//测试fd是否可写
 					printf("send message to port!\n");
 					sendInfo(fd,sendbuff,strLen);
-				}
+				//}
+                                struct timeval tv1;
+                                gettimeofday(&tv1,NULL);
+                                printf("millisecond:%ld\n\n",tv1.tv_sec*1000 + tv1.tv_usec/1000);  //毫秒
 			}
 			//从串口读入并发送
 			if(FD_ISSET(fd,&rfds)){//测试fd是否可读
-				nread=read(fd,recvbuff,256);
+				nread=read(fd,recvbuff,33);
 				recvbuff[nread]='\0';
-				printf("\nMessage form port:%c\n",recvbuff[0]);
-				if(FD_ISSET(sock,&wfds)){//测试sock是否可写
+				printf("\nMessage from port:%c\n",recvbuff[0]);
+				//if(FD_ISSET(sock,&wfds)){//测试sock是否可写
 					printf("send message to server!\n");
 					recvbuff[1]='1';//自动加上Pi的编号。
 					printf("%d\n",nread);
 					sendto(sock, recvbuff, nread, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-				}
+				//}
 			}	
 		}
+		//else
+			//printf("heiheihei\n");
 	}
 
 	return 0;
