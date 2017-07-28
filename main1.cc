@@ -179,20 +179,20 @@ int main()
 					if (recvbuff[0] == 'R' || recvbuff[0] == 'U'){
 						printf("\nMessage from port:%c\n", recvbuff[0]);
 						flag = 1;
-						data[numCount] = recvbuff[0];
-						numCount++;
+						data[charCount] = recvbuff[0];
+						charCount++;
 					}
 				
 				}
 				else{
 					nread = read(fd, recvbuff, 1);//读一个字符
-					data[numCount] = recvbuff[0];
-					numCount++;
-					if (numCount == 33){
+					data[charCount] = recvbuff[0];
+					charCount++;
+					if (charCount == 33){
 						printf("send message to server!\n");
 						data[1] = '1';//自动加上Pi的编号。
 						sendto(sock, data, 33, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-						flag = numCount = 0;
+						flag = charCount = 0;
 					}
 				}
 			}	
