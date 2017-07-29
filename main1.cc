@@ -148,8 +148,8 @@ int main()
 		struct timeval timeout={1,0}; //select等待1秒，1秒轮询，要非阻塞就置0
 		FD_ZERO(&rfds); //每次循环都要清空集合，否则不能检测描述符变化
 		FD_ZERO(&wfds);
-                FD_SET(sock,&rfds); //添加描述符  
-                FD_SET(fd,&rfds); //同上 
+        FD_SET(sock,&rfds); //添加描述符  
+        FD_SET(fd,&rfds); //同上 
 		//FD_SET(sock,&wfds); 
                 //FD_SET(fd,&wfds); 
                 //struct timeval tv;
@@ -158,10 +158,8 @@ int main()
 		if(select(maxfdp,&rfds,&wfds,NULL,&timeout)>0){
 			//从udp读入并发送给串口
 			if(FD_ISSET(sock,&rfds)){//测试sock是否可读
-				struct timeval tv;
-             			gettimeofday(&tv,NULL);
-              			printf("millisecond:%ld",tv.tv_sec*1000 + tv.tv_usec/1000);  //毫秒		
-    				strLen= recvfrom(sock, sendbuff, BUF_SIZE, 0,(struct sockaddr*)&clnt_addr, &nSize);
+				printf("\n");
+    			strLen= recvfrom(sock, sendbuff, BUF_SIZE, 0,(struct sockaddr*)&clnt_addr, &nSize);
 				sendbuff[strLen]=0;
 				printf("\nMessage form server: %c\n", sendbuff[0]);
 				//if(FD_ISSET(fd,&wfds)){//测试fd是否可写
@@ -177,7 +175,6 @@ int main()
 				if (flag == 0){
 					nread = read(fd, recvbuff, 1);//读一个字符
 					if (recvbuff[0] == 'R' || recvbuff[0] == 'U'){
-						printf("\nMessage from port:%c\n", recvbuff[0]);
 						flag = 1;
 						data[charCount] = recvbuff[0];
 						charCount++;
@@ -187,13 +184,37 @@ int main()
 				else{
 					nread = read(fd, recvbuff, 1);//读一个字符
 					data[charCount] = recvbuff[0];
-					charCount++;
-					if (charCount == 33){
-						printf("send message to server!\n");
-						data[1] = '1';//自动加上Pi的编号。
-						sendto(sock, data, 33, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-						flag = charCount = 0;
+					if (data[0] == 'U'){
+						if (data[1] == 'U'){
+							charCount++;
+							if (charCount == 33){
+								printf("\nMessage from port:%c\n", data[0]);
+								printf("send message to server!\n");
+								data[1] = '1';//自动加上Pi的编号。
+								sendto(sock, data, 33, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+								flag = charCount = 0;
+							}
+						}
+						else{
+							flag = charCount = 0;
+						}
 					}
+					else{
+						if (data[1]=='R'){
+							charCount++;
+							if (charCount == 33){
+								printf("\nMessage from port:%c\n", data[0]);
+								printf("send message to server!\n");
+								data[1] = '1';//自动加上Pi的编号。
+								sendto(sock, data, 33, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+								flag = charCount = 0;
+							}
+						}
+						else{
+							flag = charCount = 0;
+						}
+					}				
+					
 				}
 			}	
 		}
